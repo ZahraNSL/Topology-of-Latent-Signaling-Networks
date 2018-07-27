@@ -336,10 +336,7 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,P_S,ts){
   randratio = (runif(1,min=0,max=2))
   if (((new_score>pre_score)&&(flag_move==1))||((exp(new_score-pre_score)>=randratio) &&(flag_move==1)))
   {
-    print("itr")
-    print(Q)
-    print(move_type)
-    
+   
     model=new_model
     acc_res= c(acc_res,list(new_model$W))
     acc_ratio=c(acc_ratio,list(l))
