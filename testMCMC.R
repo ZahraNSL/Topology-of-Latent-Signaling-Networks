@@ -5,7 +5,7 @@ library(pROC)
 #library(ROCR)
 library(PerfMeas)
 library(texmex)
-Rcpp::sourceCpp('~/Downloads/Codes/Dream8/lastVers/llFunc.cpp')
+Rcpp::sourceCpp('~/llFunc.cpp')
 #######################################################################################################################
 # functions of likelihood,prior of W and parameter estimation
 #
@@ -136,7 +136,9 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,W,P_S){
   all_Q=list()
   #suggested_sds = 2^((-10):1)
   #suggested_sds = seq(2^(-10),0.2,length=5000)
-  
+  for(itr in 1:30000)
+  { 
+    
   Q=0
   move_type = sample(x = c(1,2,3,4,5),size = 1,prob = c(1/5,1/5,1/5,1/5,1/5))
   
@@ -344,6 +346,7 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,W,P_S){
   }
   
 }
+
   return(list(all_res,all_ratio,all_flag,acc_res,acc_ratio,rej_res,rej_ratio,all_Q))
 }
 #========================================================
