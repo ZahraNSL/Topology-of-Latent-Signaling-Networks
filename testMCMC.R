@@ -103,9 +103,9 @@ gammas = function(R,r0#Parameter of network
 # prior.theta = optional matrix of prior attachement probabilities of E-nodes to S-nodes
 # seed = random seed
 # returns model structure
-learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,W,P_S){
+learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,P_S,ts){
   npert = NROW(Q)
-  nstates = ncol(W)
+  nstates = NCOL(Q)
   if(is.null(rho))
     rho = matrix(0.5, ncol=nstates, nrow=nstates,	dimnames= list( colnames(W), colnames(W)))
   if(is.null(prior.theta))
@@ -128,7 +128,7 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,W,P_S){
   
   
   
-  pre_score = prior(model$W,model$prior.W$rho,model$prior.W$lamdba,model$prior.W$nu,model$prior.W$tau)+Likelihood(model,dat,compute_states ,gammas ,ddens_1,ddens_0,P_S)
+  pre_score = prior(model$W,model$prior.W$rho,model$prior.W$lamdba,model$prior.W$nu,model$prior.W$tau)+Likelihood(model,dat,compute_states ,gammas ,ddens_1,ddens_0,P_S,ts)
   
   # perform MCMC
   acc_sd=list()
@@ -143,7 +143,7 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,W,P_S){
   all_Q=list()
   #suggested_sds = 2^((-10):1)
   #suggested_sds = seq(2^(-10),0.2,length=5000)
-  for(itr in 1:30000)
+  for(itr in 1:100)
   { 
     
   Q=0
@@ -319,14 +319,14 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,W,P_S){
   }
   
   
-  l=Likelihood(new_model,dat,compute_states ,gammas ,ddens_1,ddens_0,PS,tstep)
+  l=Likelihood(new_model,dat,compute_states ,gammas ,ddens_1,ddens_0,PS,ts)
   if(Q){
     new_score = prior(new_model$W,new_model$prior.W$rho,new_model$prior.W$lamdba,new_model$prior.W$nu,new_model$prior.W$tau)+l+log(Q_old_cond_new)
-    pre_score = prior(model$W,model$prior.W$rho,model$prior.W$lamdba,model$prior.W$nu,model$prior.W$tau)+Likelihood(model,dat,compute_states ,gammas ,ddens_1,ddens_0,PS,tstep)+ log(Q_new_cond_old)
+    pre_score = prior(model$W,model$prior.W$rho,model$prior.W$lamdba,model$prior.W$nu,model$prior.W$tau)+Likelihood(model,dat,compute_states ,gammas ,ddens_1,ddens_0,PS,ts)+ log(Q_new_cond_old)
   }else{
     
     new_score = prior(new_model$W,new_model$prior.W$rho,new_model$prior.W$lamdba,new_model$prior.W$nu,new_model$prior.W$tau)+l
-    pre_score = prior(model$W,model$prior.W$rho,model$prior.W$lamdba,model$prior.W$nu,model$prior.W$tau)+Likelihood(model,dat,compute_states ,gammas ,ddens_1,ddens_0,PS,tstep) 
+    pre_score = prior(model$W,model$prior.W$rho,model$prior.W$lamdba,model$prior.W$nu,model$prior.W$tau)+Likelihood(model,dat,compute_states ,gammas ,ddens_1,ddens_0,PS,ts) 
   }
   all_res=c(all_res,list(new_model$W))
   all_ratio=c(all_ratio,l)
