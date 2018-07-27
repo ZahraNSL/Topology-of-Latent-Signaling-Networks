@@ -7,6 +7,7 @@ library(gplots)
 library(pracma)
 library(PerfMeas)
 library(texmex)
+library(LaplacesDemon)
 Rcpp::sourceCpp('~/llFunc.cpp')
 #######################################################################################################################
 # functions of likelihood,prior of W and parameter estimation
@@ -424,7 +425,7 @@ postProcess<- function(results,model){
   
   len=length(results)
   b_in=len/2
-  thn=10
+  thn=2
   
   postPrior=matrix(0,nstates,nstates)
   sc=matrix(0,nstates,nstates)
@@ -433,10 +434,9 @@ postProcess<- function(results,model){
   res=list()
   
   for(from in 1:nstates)
-    for(to in 1:nstates)
+    {for(to in 1:nstates)
     {
-      if(from!=to)
-      {
+      
         W_list=sapply(1:len,function(i) unlist(results[[i]])[from,to])
         
         postPrior[from,to]=sum(Thin(W_list[b_in:len],By = thn)!=0)/(length(Thin(W_list[b_in:len],By = thn)))
@@ -460,14 +460,14 @@ ROC_curve<- function(postPrior, sc,model){
   model$W= model$W[1:nstates,1:nstates]
   
   #pROC
-  x=roc( response =   as.vector(c(model$W[lower.tri(model$W)],model$W[upper.tri(model$W)])),predictor =     as.vector(c(postPrior[lower.tri(postPrior)],postPrior[upper.tri(postPrior)])),auc = TRUE,plot = TRUE)
+  x=roc( response =   as.vector(model$W),predictor =     as.vector(postPrior),auc = TRUE,plot = TRUE)
   print(auc(x))
   #ifile <- paste0(sim_num,'pprior_pROC_ROC.pdf')
   #pdf(ifile)
   #plot.roc(x,legacy.axes = TRUE,print.auc = TRUE,auc.polygon = TRUE)
   #d <- dev.off()
   
-  y=roc( response =   as.vector(c(model$W[lower.tri(model$W)],model$W[upper.tri(model$W)])),predictor =   as.vector(c(sc[lower.tri(sc)],sc[upper.tri(sc)])),auc = TRUE,plot = TRUE)
+  y=roc( response =   as.vector(model$W),predictor =   as.vector(sc),auc = TRUE,plot = TRUE)
   print(auc(y))
   #ifile <- paste0(sim_num,'sc_pROC_ROC.pdf')
   #pdf(ifile)
@@ -486,7 +486,7 @@ PR_curve<- function(postPrior, sc ,model){
   #prefMeas
   #print(AUC.single(pred = as.vector(c(postPrior[lower.tri(postPrior)],postPrior[upper.tri(postPrior)])),labels = as.vector(c(model$W[lower.tri(model$W)],model$W[upper.tri(model$W)]))))
   #print(AUC.single(pred = as.vector(c(sc[lower.tri(sc)],sc[upper.tri(sc)])),labels = as.vector(c(model$W[lower.tri(model$W)],model$W[upper.tri(model$W)]))))
-  res=list(precision.at.all.recall.levels(scores = as.vector(c(postPrior[lower.tri(postPrior)],postPrior[upper.tri(postPrior)])), labels = as.vector(c(model$W[lower.tri(model$W)],model$W[upper.tri(model$W)]))))
+  res=list(precision.at.all.recall.levels(scores = as.vector(postPrior), labels = as.vector(model$W)))
   AUPRC_p <- AUPRC (res, comp.precision=TRUE)
   print(AUPRC_p)
   #ifile <- paste0(sim_num,'pprior_prefMeas_pRec.pdf')
@@ -495,7 +495,7 @@ PR_curve<- function(postPrior, sc ,model){
   #d <- dev.off()
   precision.recall.curves.plot(res,plot.precision = TRUE)
   
-  res=list(precision.at.all.recall.levels(scores = as.vector(c(sc[lower.tri(sc)],sc[upper.tri(sc)])), labels = as.vector(c(model$W[lower.tri(model$W)],model$W[upper.tri(model$W)]))))
+  res=list(precision.at.all.recall.levels(scores = as.vector(sc), labels = as.vector(model$W)))
   AUPRC_s <- AUPRC (res, comp.precision=TRUE)
   print(AUPRC_s)
   #ifile <- paste0(sim_num,'sc_prefMeas_pRec.pdf')
