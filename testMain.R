@@ -6,7 +6,7 @@ E_num<-10
 times<-10
 tstep <-0.1
 
-
+#make test true W
 W<-matrix(0,3,3)
 W[1,3]<-1
 W[2,3]<-1
@@ -29,9 +29,8 @@ r0<-c(0,0,0)  #start state
 
 for(q in 1:nrow(Q)){ 
   
-  
-  
-  rq=(compute_states(W = W,q = Q[q,],r0 = r0,times = times,method = "ODE",P_S = PS,tstp = tstep))
+  #propagation under each perturbation
+  rq= compute_states(W = W,q = Q[q,],r0 = r0,times = times,method = "ODE",P_S = PS,tstp = tstep)
   
   prob <- gammas(R = rq,r0 = r0)
   
@@ -48,7 +47,7 @@ for(q in 1:nrow(Q)){
   
   
   
-  
+  #simulate observation
   for(i in 1:dim(O)[1]){ # iterate over all E-nodes
     for(t in 1:(length(seq(1,times,tstep)))){# iterate over time points
       
@@ -61,7 +60,7 @@ for(q in 1:nrow(Q)){
 }
 
 
-
+#observation heatmaps
 my_palette <- colorRampPalette(c("blue","gray","red"))
 for (i in 1:nrow(Q)) {
   heatmap.2((O[,i,]),density.info = "none",col=my_palette,trace="none",Rowv = "none",Colv = "none",scale="none",main=paste("Exp_",i))
@@ -70,6 +69,7 @@ for (i in 1:nrow(Q)) {
 #d <- dev.off()
 
 
+#truth model                                   
 true_model = list(W=W, Q=Q, prior.theta=prior.theta, prior.W=NULL, orig.dat=O, r0=r0, PS=PS)
 true_model$prior.W=list(rho=NULL, lambda=NULL, nu=NULL, tau=NULL)  #weight matrix
 true_model$prior.W$lambda=1   #parameter for exponential function(nonedge)
