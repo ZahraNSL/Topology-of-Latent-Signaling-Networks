@@ -2,7 +2,9 @@ library(MASS)
 library(msm)
 library(coda)
 library(pROC)
-#library(ROCR)
+library(deSolve)
+library(gplots)
+library(pracma)
 library(PerfMeas)
 library(texmex)
 Rcpp::sourceCpp('~/llFunc.cpp')
@@ -18,6 +20,11 @@ rate_0=10
 
 ddens_1 = function(j){dlnorm(x = j, meanlog = mu_1, sdlog = sigma_1)}
 ddens_0 = function(j){dexp(x = j, rate = rate_0)}
+
+
+
+rdens_1 = function(){rlnorm(n = 1, meanlog = mu_1, sdlog =  sigma_1)}
+rdens_0 = function(){rexp(n = 1, rate = rate_0)}
 
 #======================================================
 
