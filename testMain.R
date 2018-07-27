@@ -1,46 +1,40 @@
 source("~/testMCMC.R")
 
-
+#initial configurations-----------------------------------
 S_num<-3
 E_num<-10
 times<-10
 tstep <-0.1
-
 #make test true W
 W<-matrix(0,3,3)
 W[1,3]<-1
 W[2,3]<-1
 diag(W)=-0.1
-
-PS<- diag(1,3) #P to S connections
-
-
+#P to S connections
+PS<- diag(1,3) 
+# known state of intervention nodes (interventing one Pnode at each experiment)
 l <- rep(list(0:1), S_num)
-Q = as.matrix(expand.grid(l))    # known state of intervention nodes (interventing one Pnode at each experiment)
-
+Q = as.matrix(expand.grid(l))    
+# observation matrix
 O = array(0, dim=c(E_num*S_num, nrow(Q), length(seq(1,times,tstep))), dimnames=list(paste0('E_',as.character(1:(E_num*S_num))), paste0('pert_',as.character(1:NROW(Q))), paste0('T_',1:(length(seq(1,times,tstep)))))) # prepare observation data
-
+#S_E connections
 X=diag(x = 1,nrow =S_num )
-prior.theta = do.call(rbind,lapply(1:S_num ,function(s)rbind(matrix(X[s,],nrow=E_num,ncol=S_num ,byrow=TRUE))))  #S_E connections
+prior.theta = do.call(rbind,lapply(1:S_num ,function(s)rbind(matrix(X[s,],nrow=E_num,ncol=S_num ,byrow=TRUE)))) 
+#start state
+r0<-c(0,0,0)  
 
-
-r0<-c(0,0,0)  #start state
-
-
+#propagation under each perturbation
 for(q in 1:nrow(Q)){ 
   
-  #propagation under each perturbation
-  rq= compute_states(W = W,q = Q[q,],r0 = r0,times = times,method = "ODE",P_S = PS,tstp = tstep)
-  
+  #update state vectors
+  rq= compute_states(W = W,q = Q[q,],r0 = r0,times = times,method = "ODE",P_S = PS,tstp = tstep) 
+  # probability of activation
   prob <- gammas(R = rq,r0 = r0)
   
   
   plot(prob[,1],type = "l")
   points(prob[,2],col="red",type = "l")
   points(prob[,3],col="blue",type="l")
-  
-  
-  
   plot(rq[,1])
   points(rq[,2],col="red")
   points(rq[,3],col="blue")
@@ -48,8 +42,10 @@ for(q in 1:nrow(Q)){
   
   
   #simulate observation
-  for(i in 1:dim(O)[1]){ # iterate over all E-nodes
-    for(t in 1:(length(seq(1,times,tstep)))){# iterate over time points
+   # iterate over all E-nodes
+  for(i in 1:dim(O)[1]){
+    # iterate over time points
+    for(t in 1:(length(seq(1,times,tstep)))){
       
       # draw O[i,q,t] from mixture distribution (Eq. 3)
       indicator = sample(c(FALSE,TRUE),size = 1,prob=c(1-prob[t,which(prior.theta[i,]==1)],prob[t,which(prior.theta[i,]==1)]))
