@@ -101,3 +101,15 @@ plot(1:length(res_mcmc[[5]]),sapply(1:length(res_mcmc[[5]]), function(i){res_mcm
 plot(1:length(res_mcmc[[5]]),sapply(1:length(res_mcmc[[5]]), function(i){res_mcmc[[4]][[i]][3,1]}),type = "l")
 plot(1:length(res_mcmc[[5]]),sapply(1:length(res_mcmc[[5]]), function(i){res_mcmc[[4]][[i]][3,2]}),type = "l")
 plot(1:length(res_mcmc[[5]]),sapply(1:length(res_mcmc[[5]]), function(i){res_mcmc[[4]][[i]][3,3]}),type = "l")
+                                   
+                                   
+                                   
+
+postMatrices = postProcess(res_mcmc[[4]],true_model)
+
+
+ROC_curve(postPrior = postMatrices[[1]],sc = postMatrices[[2]] ,model = true_model)
+
+
+PR_curve(postMatrices[[1]],postMatrices[[2]] ,true_model)  
+
