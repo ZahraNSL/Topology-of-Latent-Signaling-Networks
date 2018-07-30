@@ -95,7 +95,6 @@ gammas = function(R,r0#Parameter of network
 }
 
 #========================================================
-
 # learn a model from data-------------------
 # dat = see above
 # Q = matrix of perturbation vectors (each column = one perturbation vector)
@@ -119,7 +118,9 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,P_S,ts){
   times =dim(dat)[3] #tryCatch(as.numeric(dimnames(dat)[[3]]), error = function(e) stop("dimnames[[3]] has to indicate measurement time points"))
   # set.seed(seed)
   
-  #W=null_model$W#######################################################################
+  W = matrix(0.5, nrow=nstates, ncol=nstates) # initial W
+  #diag(W)=-1                   # self-deplition
+  diag(W[1:nstates,1:nstates])=0 #no self-deplition 
   
   model = list(W=W, Q=Q, prior.theta=prior.theta, prior.W=list(rho=rho, lamdba=hyper.W$lambda, nu=hyper.W$nu, tau=hyper.W$tau)
                , orig.dat=dat, r0=rep(0, nstates),PS=P_S) # orig.dat should be changed 
@@ -144,13 +145,13 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,P_S,ts){
   all_Q=list()
   #suggested_sds = 2^((-10):1)
   #suggested_sds = seq(2^(-10),0.2,length=5000)
-  for(itr in 1:100)
+  for(itr in 1:5000)
   { 
     
   Q=0
-  move_type = sample(x = c(1,2,3,4,5),size = 1,prob = c(1/5,1/5,1/5,1/5,1/5))
+  move_type = sample(x = c(1,2,3,4,5),size = 1,prob = c(1/9,1/9,1/9,1/9,5/9))
   
-  indx = sample(1:nstates,2,replace = TRUE)
+  indx = sample(1:nstates,2,replace = FALSE)
   i_indx = indx[1]
   j_indx= indx[2]
   
@@ -165,25 +166,12 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,P_S,ts){
       
       
       flag_move = 1
-      sign_diag <-1
-      if(i_indx== j_indx)
-        sign_diag <- sample(c(1,-1),1)
+      new_model$W[i_indx,j_indx] =  ( rlnorm(1, mean = new_model$prior.W$nu, sd = new_model$prior.W$tau)) # new_w_ij = lnorm(nu, tau)
       
-      new_model$W[i_indx,j_indx] = sign_diag * exp( rnorm(1, mean = new_model$prior.W$nu, sd = new_model$prior.W$tau)) # new_w_ij = lnorm(nu, tau)
+      Q_new_cond_old <- dlnorm(abs(new_model$W[i_indx,j_indx]), meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) * (1/9) * (1/(sum(model$W==0)-nstates))#insert to old
       
-      Q_new_cond_old <- dlnorm(abs(new_model$W[i_indx,j_indx]), meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) * (1/5) * (1/sum(model$W==0))#insert to old
-      
-      Q_old_cond_new <- (1/5) * (1/sum(new_model$W!=0)) #delete from new
-      
-      if(model$W[j_indx,i_indx]!=0 & i_indx!=j_indx){
-        Q_new_cond_old <- Q_new_cond_old + (dlnorm(new_model$W[i_indx,j_indx], meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) * (1/5) * (1/sum(xor(c(model$W[lower.tri(model$W)]),c(model$W[upper.tri(model$W)]))))) #reverse from old
-        
-      }
-      
-      if(new_model$W[j_indx,i_indx]==0 & i_indx!=j_indx){
-        Q_old_cond_new <- Q_old_cond_new + ( (1/5) * (1/sum(xor(c(new_model$W[lower.tri(new_model$W)]),c(new_model$W[upper.tri(new_model$W)]))))) #reverse from new
-        
-      }
+      Q_old_cond_new <- (1/9) * (1/sum(new_model$W!=0)) #delete from new
+     
       if(Q_new_cond_old&&Q_old_cond_new)
         
         Q<- log(Q_old_cond_new)- log(Q_new_cond_old)
@@ -200,19 +188,10 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,P_S,ts){
       flag_move = 1
       new_model$W[i_indx,j_indx] = 0
       
-      Q_new_cond_old <-  (1/5) * (1/sum(model$W!=0))#DELET FROM OLD
+      Q_new_cond_old <-  (1/9) * (1/sum(model$W!=0))#DELET FROM OLD
       
-      Q_old_cond_new <- dlnorm(abs(model$W[i_indx,j_indx]), meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) *(1/5) * (1/sum(new_model$W==0)) #insert to new
+      Q_old_cond_new <- dlnorm(abs(model$W[i_indx,j_indx]), meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) *(1/9) * (1/(sum(new_model$W==0)-nstates)) #insert to new
       
-      if(model$W[j_indx,i_indx]==0 & i_indx!=j_indx){
-        Q_new_cond_old <- Q_new_cond_old + ( (1/5) * (1/sum(xor(c(model$W[lower.tri(model$W)]),c(model$W[upper.tri(model$W)]))))) #reverse from old
-        
-      }
-      
-      if(new_model$W[j_indx,i_indx]!=0 & i_indx!=j_indx){
-        Q_old_cond_new <- Q_old_cond_new + ( dlnorm(model$W[i_indx,j_indx], meanlog = model$prior.W$nu, sdlog = model$prior.W$tau) *(1/5) * (1/sum(xor(c(new_model$W[lower.tri(new_model$W)]),c(new_model$W[upper.tri(new_model$W)]))))) #reverse from new
-        
-      }
       if(Q_new_cond_old&&Q_old_cond_new)
         
         Q<- log(Q_old_cond_new)- log(Q_new_cond_old)
@@ -226,28 +205,13 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,P_S,ts){
         flag_move = 1
         new_model$W[i_indx,j_indx]=model$W[j_indx,i_indx]
         new_model$W[j_indx,i_indx]=model$W[i_indx,j_indx]
-        
-        if(new_model$W[i_indx,j_indx]!= 0){
           
-          Q_new_cond_old <- (1/5) * dlnorm(new_model$W[i_indx,j_indx], meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) * (1/sum(xor(c(model$W[lower.tri(model$W)]),c(model$W[upper.tri(model$W)]))))   #reverse from old
-          
-          Q_old_cond_new <- (1/5) * dlnorm(new_model$W[i_indx,j_indx], meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) * (1/sum(xor(c(new_model$W[lower.tri(new_model$W)]),c(new_model$W[upper.tri(new_model$W)]))))#reverse from new
-          
-        } else {
-          
-          Q_new_cond_old <- (1/5) * dlnorm(new_model$W[j_indx,i_indx], meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) * (1/sum(xor(c(model$W[lower.tri(model$W)]),c(model$W[upper.tri(model$W)]))))#reverse from old
-          
-          Q_old_cond_new <- (1/5) * dlnorm(new_model$W[j_indx,i_indx], meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) * (1/sum(xor(c(new_model$W[lower.tri(new_model$W)]),c(new_model$W[upper.tri(new_model$W)]))))#reverse from new
-          
-        }
-        if(Q_new_cond_old&&Q_old_cond_new)
-          
-          Q<- log(Q_old_cond_new)- log(Q_new_cond_old)  # should be one
+          Q<- 0  # should be symmetric
         
         
         
       }}
-  } else if(move_type==4)#swip weights
+  } else if(move_type==4)#swap weights
   {
     if(i_indx!=j_indx){
       if(model$W[i_indx,j_indx]!= 0) {
@@ -266,9 +230,9 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,P_S,ts){
             new_model$W[k_indx,l_indx]=model$W[i_indx,j_indx]
             new_model$W[i_indx,j_indx]=model$W[k_indx,l_indx]
             
-            Q_new_cond_old =  1/5 #(1/sum(c(new_model$W[lower.tri(new_model$W)|upper.tri(new_model$W)])==model$W[i_indx,j_indx]))  dlnorm(new_model$W[i_indx,j_indx], meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) *(1/5) * (1/sum(c(new_model$W[lower.tri(new_model$W)|upper.tri(new_model$W)])!=0)) * unique
+            Q_new_cond_old =  1/9 #(1/sum(c(new_model$W[lower.tri(new_model$W)|upper.tri(new_model$W)])==model$W[i_indx,j_indx]))  dlnorm(new_model$W[i_indx,j_indx], meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) *(1/9) * (1/sum(c(new_model$W[lower.tri(new_model$W)|upper.tri(new_model$W)])!=0)) * unique
             
-            Q_old_cond_new = 1/5 #dlnorm(model$W[i_indx,j_indx], meanlog = model$prior.W$nu, sdlog = model$prior.W$tau) *(1/5) * (1/sum(c(new_model$W[lower.tri(new_model$W)|upper.tri(new_model$W)])!=0)) * unique
+            Q_old_cond_new = 1/9 #dlnorm(model$W[i_indx,j_indx], meanlog = model$prior.W$nu, sdlog = model$prior.W$tau) *(1/9) * (1/sum(c(new_model$W[lower.tri(new_model$W)|upper.tri(new_model$W)])!=0)) * unique
             
             Q<- log(Q_old_cond_new)- log(Q_new_cond_old)
             
@@ -281,9 +245,9 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,P_S,ts){
             new_model$W[l_indx,k_indx]=model$W[i_indx,j_indx]
             new_model$W[i_indx,j_indx]=model$W[l_indx,k_indx]
             
-            Q_new_cond_old =   1/5 #dlnorm(new_model$W[i_indx,j_indx], meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) *(1/5) * (1/sum(c(new_model$W[lower.tri(new_model$W)|upper.tri(new_model$W)])!=0)) * unique
+            Q_new_cond_old =   1/9 #dlnorm(new_model$W[i_indx,j_indx], meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) *(1/9) * (1/sum(c(new_model$W[lower.tri(new_model$W)|upper.tri(new_model$W)])!=0)) * unique
             
-            Q_old_cond_new =  1/5 #dlnorm(model$W[i_indx,j_indx], meanlog = model$prior.W$nu, sdlog = model$prior.W$tau) *(1/5) * (1/sum(c(new_model$W[lower.tri(new_model$W)|upper.tri(new_model$W)])!=0)) * unique
+            Q_old_cond_new =  1/9 #dlnorm(model$W[i_indx,j_indx], meanlog = model$prior.W$nu, sdlog = model$prior.W$tau) *(1/9) * (1/sum(c(new_model$W[lower.tri(new_model$W)|upper.tri(new_model$W)])!=0)) * unique
             
             Q<- log(Q_old_cond_new)- log(Q_new_cond_old)
           }
@@ -296,23 +260,15 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,P_S,ts){
     if(model$W[i_indx,j_indx]!=0){
       
       flag_move = 1
-      sign_diag <-1
-      if(i_indx== j_indx)
-        sign_diag <- sample(c(1,-1),1)
-      new_model$W[i_indx,j_indx] = sign_diag * exp(log(abs(model$W[i_indx,j_indx]))+rnorm(1,mean = 0,sd = 0.02))
+      new_model$W[i_indx,j_indx] = abs(exp(log(abs(model$W[i_indx,j_indx]))+rnorm(1,mean = 0,sd = 0.02)))
       if (new_model$W[i_indx,j_indx]!= 0){
         
-        Q_new_cond_old = dlnorm(abs(new_model$W[i_indx,j_indx]), meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) #*(1/5) * (1/sum(model$W!=0))
+        Q_new_cond_old = dlnorm(abs(new_model$W[i_indx,j_indx]), meanlog = new_model$prior.W$nu, sdlog = new_model$prior.W$tau) #*(5/9) * (1/sum(model$W!=0))
         
-        Q_old_cond_new = dlnorm(abs(model$W[i_indx,j_indx]), meanlog = model$prior.W$nu, sdlog = model$prior.W$tau) #* (1/5) * (1/sum(model$W!=0))
+        Q_old_cond_new = dlnorm(abs(model$W[i_indx,j_indx]), meanlog = model$prior.W$nu, sdlog = model$prior.W$tau) #* (5/9) * (1/sum(model$W!=0))
         
         if(Q_new_cond_old&&Q_old_cond_new)
           Q<- log(Q_old_cond_new)- log(Q_new_cond_old)
-        
-      }else{
-        
-        flag_move = 0
-        Q = 0
         
       }
     }
@@ -333,10 +289,10 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,P_S,ts){
   all_ratio=c(all_ratio,l)
   
   # logratio= new_score - pre_score + Q 
-  randratio = (runif(1,min=0,max=2))
-  if (((new_score>pre_score)&&(flag_move==1))||((exp(new_score-pre_score)>=randratio) &&(flag_move==1)))
+  randratio = (runif(1,min=0,max=1))
+  if (((new_score>pre_score)||(exp(new_score-pre_score)>=randratio)) &&(flag_move==1))
   {
-   
+  
     model=new_model
     acc_res= c(acc_res,list(new_model$W))
     acc_ratio=c(acc_ratio,list(l))
@@ -353,57 +309,6 @@ learn = function(dat, Q, rho, hyper.W, prior.theta,seed=123,P_S,ts){
 }
 
   return(list(all_res,all_ratio,all_flag,acc_res,acc_ratio,rej_res,rej_ratio,all_Q))
-}
-#========================================================
-
-# compute log-likelihood according to formula in supplements---------------------------------
-# model = list(W, Q, prior.theta, prior.W=list(rho, lambda, nu, tau), orig.dat, r0)
-# dat = data array (#E-nodes x #perturbations x time points)
-# returns log-likelihood
-likelihood = function(model, dat){
-  
-  nstates = NCOL(model$W)   #S numbers
-  Snames <- colnames(model$W)
-  Pnames <- colnames(model$Q)
-  Enames <- rownames(dat)[-dim(dat)[[1]]]
-  times = as.numeric(dim(dat)[[3]]) 
-  ll = 0
-  R=list()
-  gamma_val=list()
-  
-  for(q in 1:NROW(model$Q)){ 
-    
-    # iterate over all perturbation experiments
-    R[[q]] = compute_states(model$W, model$Q[q,], model$r0, times,"ODE",model$PS)
-    temp=R[[q]][which(abs(R[[q]])>700,arr.ind = T)]                #thereshold over states because of exp() in gamma function
-    R[[q]][which(abs(R[[q]])>700,arr.ind = T)]=700*sign(temp)
-    
-    
-    # compute gammas
-    gamma_val[[q]]=gammas(R[[q]],model$r0 )
-    # compute Eq. (3), ensuring you never take log(0)
-    # plug into formula in supplements:
-    for(i in 1:(dim(dat)[1]-1)){ 
-      # iterate over all E-nodes
-      # add the second formula in the Supplements to ll
-      temp=c()
-      for(s in 1:nstates)
-      {
-        temp[s]<- sum(log((((gamma_val[[q]][,s]*ddens_1(dat[i,q,],q)) + ((1-gamma_val[[q]][,s])*ddens_0(dat[i,q,],q)))*(model$prior.theta[i,s]))+1))
-      }
-      
-      a = max(temp)
-      small_a=log(sum(exp(temp-a)))
-      #track likelihood computation for each E_node and different parents
-      #print(a)
-      #print(temp)
-      #print(temp-a)
-      #print(small_a)
-      ll=ll+sum(a,small_a)
-    }
-    
-  }
-  return(ll)  
 }
 #=======================================================
 
