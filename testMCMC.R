@@ -13,19 +13,52 @@ Rcpp::sourceCpp('~/llFunc.cpp')
 # functions of likelihood,prior of W and parameter estimation
 #
 # density of observations -----------------------------
-
-mu_1 = 0.5
-sigma_1 = 0.01
-
-rate_0=10
-
-ddens_1 = function(j){dlnorm(x = j, meanlog = mu_1, sdlog = sigma_1)}
-ddens_0 = function(j){dexp(x = j, rate = rate_0)}
+trunc_mean<-c(-12.6934195) 
+trunc_sd<- c(1.808685)
 
 
+gumb_loc<-c(2) 
 
-rdens_1 = function(){rlnorm(n = 1, meanlog = mu_1, sdlog =  sigma_1)}
-rdens_0 = function(){rexp(n = 1, rate = rate_0)}
+gumb_scl <- c(0.6 )
+
+gumb_shp <- c(0)
+
+
+dgumbel <- function(x,mu,s){ # PDF
+  exp((mu - x)/s - exp((mu - x)/s))/s
+}
+
+pgumbel <- function(q,mu,s){ # CDF
+  exp(-exp(-((q - mu)/s)))
+}
+
+qgumbel <- function(p, mu, s){ # quantile function
+  mu-s*log(-log(p))
+}
+
+
+ddens_0 = function(d){
+  return(dtnorm(x = d, mean = trunc_mean, sd = trunc_sd,0,1))
+}
+ddens_1 = function(d){
+  return(dgev(x = d,mu = gumb_loc,sigma = gumb_scl,xi = gumb_shp))}
+
+
+rdens_1 = function(){rgev(n = 1, mu = gumb_loc ,sigma = gumb_scl ,xi = gumb_shp)}
+rdens_0 = function(){rtnorm(n = 1, mean = trunc_mean ,sd = trunc_sd ,lower = 0 ,upper = 1)}
+
+#mu_1 = 0.5
+#sigma_1 = 0.01
+
+#rate_0=10
+
+#ddens_1 = function(j){dlnorm(x = j, meanlog = mu_1, sdlog = sigma_1)}
+#ddens_0 = function(j){dexp(x = j, rate = rate_0)}
+
+
+
+#rdens_1 = function(){rlnorm(n = 1, meanlog = mu_1, sdlog =  sigma_1)}
+#rdens_0 = function(){rexp(n = 1, rate = rate_0)}
 
 #======================================================
 
