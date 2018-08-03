@@ -283,7 +283,7 @@ rfunc <- function(t, x, parms) {
     
     import <- uVal(t)
     #diag(parms[[1]])= diag(parms[[1]])*parms[[3]]
-    dx= t(parms[[1]]) %*% (x) + (c(import,import,import) * (t(parms[[4]])%*% parms[[2]]))
+    dx= t(parms[[1]]) %*% (x) + (rep(import,ncol(parms[[1]])) * (t(parms[[4]])%*% parms[[2]]))
     
     list(dx)
   })
@@ -293,9 +293,9 @@ rfunc <- function(t, x, parms) {
 #######################################################################################################################
 
 #initial parameters of network-----------------------------
-S_num=3
-P_num=3
-E_num= 10
+S_num=4
+P_num=4
+E_num= 4
 spSt=c("Bi","Dia","FF","FB","PC","JK","UVB")
 tstep <- 0.1
 #===========================================================
@@ -331,7 +331,7 @@ true_model = list(W=NULL, Q=Q, prior.theta=prior.theta, prior.W=prior.W, orig.da
 
 #sample a network Structure
 # hidden_net=sampleSubnetwork(S_num)
-graphSt= samplenetwork(S_num,P_num,E_num,true_model$prior.theta,stype = "FF")
+graphSt= samplenetwork(S_num,P_num,E_num,true_model$prior.theta,stype = "Dia")
 plot.igraph(graphSt) #plot graph of S, P and E nodes
 #save(graphSt, file = paste0('graphSt.RData'))
 
@@ -351,7 +351,7 @@ diag(true_model$W)=0    # other situation 0, -0.2 because of gamma values
 #for(sim in 1:10)
 #{
 #simulate data ---------------------
-true_model$orig.dat=sim.data(model = true_model, nE = E_num*S_num,times = 5, stype = "FF", ts = tstep)
+true_model$orig.dat=sim.data(model = true_model, nE = E_num*S_num,times = 5, stype = "Dia", ts = tstep)
 
   
   #===========================================================
@@ -371,6 +371,7 @@ true_model$orig.dat=sim.data(model = true_model, nE = E_num*S_num,times = 5, sty
   
   #run MCMC and plot results------------------------------------
   res_mcmc <-learn(dat = true_model$orig.dat, Q = Q, rho=NULL, hyper.W=true_model$prior.W, prior.theta =true_model$prior.theta,seed=123,P_S = true_model$PS,ts = tstep)
+
 
 plot(unlist(res_mcmc[[2]])) #all_ll
 points(unlist(res_mcmc[[5]]),col="red") #accepted_ll
